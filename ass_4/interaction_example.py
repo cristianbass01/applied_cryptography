@@ -26,8 +26,6 @@ DE2BCBF6 95581718 3995497C EA956AE5 15D22618 98FA0510
 
 # Function to parse the server response and retrieve values
 def parse_values(output):
-    print(output)
-
     # Use regular expressions to extract A, B, and the challenge value with more flexibility
     match = re.search(
         r".*Here is A=g\^a: (\d+),\s*and\s*B=g\^b: (\d+),\s*(\d+)\.\s*What is the following, g\^ab or a random group element\?\s*(\d+)", 
@@ -42,8 +40,37 @@ def parse_values(output):
         return A, B, challenge_value
     return None, None, None
 
+def update_balance(output):
+    match = re.search(r"Your current balance is (\d+) points", output)
+    if match:
+        return int(match.group(1))
+    return None
+
+def init_balance(output):
+    match = re.search(r"You will start with (\d+) points.", output)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def x_p_function(x, p):
+    return pow(x, (p-1)//2, p)
+
 def distinguisher(g_a, g_b, challenge_value):
-    return 0
+    # Distinguish between g^ab and a random group element
+    x_p_g_a = x_p_function(g_a, prime)
+    x_p_g_b = x_p_function(g_b, prime)
+
+    x_p_g_x = x_p_function(challenge_value, prime)
+    
+    if x_p_g_a == 1 or x_p_g_b == 1:
+        if x_p_g_x == prime - 1:
+            return 0
+    elif x_p_g_a == prime - 1 and x_p_g_b == prime - 1:
+        if x_p_g_x == 1:
+            return 0
+        
+    return 1
 
 
 # we need to connect to the remote server (this requires us to be in
@@ -52,16 +79,14 @@ r = remote('appliedcrypto.cs.ru.nl', 4145)
 
 # Define the target score to win
 TARGET_SCORE = 120
-balance = 100
+balance = 0
 
 # Receive output and decode it
 output = r.recvuntil(b">").decode()
+balance = init_balance(output)
 
 # Game loop
 while balance < TARGET_SCORE:
-    # Wait briefly
-    sleep(0.1)
-
     # Parse A, B, and the challenge value from the output
     A, B, challenge_value = parse_values(output)
     
@@ -75,23 +100,29 @@ while balance < TARGET_SCORE:
     # Send the guess to the server
     r.sendline(str(guess).encode())
     
-    # Get the server's response and adjust the balance
-    output = r.recvuntil(b">").decode()
+    try:
+        # Attempt to receive until prompt or timeout
+        output = r.recvuntil(b">", timeout=3).decode()
+    except EOFError:
+        # Check if we've reached the target balance
+        print("You've reached the target balance (or th server is cruched)!")
+        break
 
-    if "Correct!" in output:
-        balance += 1
-    elif "Wrong!" in output:
-        balance -= 1
+    # Update balance by parsing the output for the balance line
+    new_balance = update_balance(output)
+    if new_balance is not None:
+        balance = new_balance
     
     # Display the updated balance
     print(f"Current balance: {balance}")
-
-    # Check if we've reached the target balance
-    if balance >= TARGET_SCORE:
-        print("You've reached the target balance!")
-        print(output)
-        break
     
+# Capture any remaining data from the server after the loop
+try:
+    final_output = r.recvall(timeout=2).decode()
+    print(final_output)
+except EOFError:
+    print("No more data from server.")
+
 # Close the connection
 r.close()
 
