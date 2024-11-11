@@ -81,6 +81,14 @@ r = remote('appliedcrypto.cs.ru.nl', 4145)
 TARGET_SCORE = 120
 balance = 0
 
+total_challenges = 0
+total_challenges_random = 0
+total_challenges_gab = 0
+
+correct_guesses = 0
+correct_guesses_random = 0
+correct_guesses_gab = 0
+
 # Receive output and decode it
 output = r.recvuntil(b">").decode()
 balance = init_balance(output)
@@ -97,15 +105,18 @@ while balance < TARGET_SCORE:
     # Use the distinguisher to guess if the value is g^ab (1) or random (0)
     guess = distinguisher(A, B, challenge_value)
     
+    # Increment total
+    total_challenges += 1
+    
     # Send the guess to the server
     r.sendline(str(guess).encode())
     
     try:
         # Attempt to receive until prompt or timeout
-        output = r.recvuntil(b">", timeout=3).decode()
+        output = r.recvuntil(b">").decode()
     except EOFError:
         # Check if we've reached the target balance
-        print("You've reached the target balance (or th server is cruched)!")
+        print("You've reached the target balance (or the server is crushed)!")
         break
 
     # Update balance by parsing the output for the balance line
@@ -113,16 +124,44 @@ while balance < TARGET_SCORE:
     if new_balance is not None:
         balance = new_balance
     
+    # Check if the guess was correct
+    if "Correct!" in output:
+        correct_guesses += 1
+        if guess == 0:
+            correct_guesses_random += 1
+            total_challenges_random += 1
+        else:
+            correct_guesses_gab += 1
+            total_challenges_gab += 1
+    else:
+        if guess == 0:
+            total_challenges_gab += 1
+        else:
+            total_challenges_random += 1
+    
     # Display the updated balance
     print(f"Current balance: {balance}")
     
 # Capture any remaining data from the server after the loop
 try:
-    final_output = r.recvall(timeout=2).decode()
+    final_output = r.recvall().decode()
     print(final_output)
 except EOFError:
     print("No more data from server.")
 
+
+# Print the total challenges, correct guesses, and probabilities
+print(f"Total challenges: {total_challenges}")
+print(f"Correct guesses: {correct_guesses}")
+print(f"Probability of correct guesses: {correct_guesses / total_challenges:.2f}")
+print(f"Total challenges (random): {total_challenges_random}")
+print(f"Correct guesses (random): {correct_guesses_random}")
+print(f"Probability of correct guesses (random): {correct_guesses_random / total_challenges_random:.2f}")
+print(f"Total challenges (g^ab): {total_challenges_gab}")
+print(f"Correct guesses (g^ab): {correct_guesses_gab}")
+print(f"Probability of correct guesses (g^ab): {correct_guesses_gab / total_challenges_gab:.2f}")
+
 # Close the connection
 r.close()
 
+# FLAG: flag_24563844526613476
