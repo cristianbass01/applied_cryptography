@@ -1,6 +1,6 @@
-import random
-import math
+import os
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 from Crypto.Hash import SHA3_256
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
@@ -41,12 +41,30 @@ def get_hash(value):
 
 # key generation function
 def KGen(length):
-    key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=length
-    )
-    sk = key.private_numbers().d
-    N = key.public_key().public_numbers().n
+    if length < 1024:
+        raise ValueError("Key length must be at least 1024 bits.")
+
+    file_name = f"private_key_{length}.pem"
+    if os.path.exists(file_name):
+        with open(file_name, "rb") as file:
+            private_key = serialization.load_pem_private_key(
+                file.read(),
+                password=None
+            )
+    else:
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=length
+        )
+        with open(file_name, "wb") as file:
+            file.write(private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption()
+            ))
+
+    sk = private_key.private_numbers().d
+    N = private_key.public_key().public_numbers().n
     
     g_1 = 11
     g_2 = pow(g_1, sk, N)
