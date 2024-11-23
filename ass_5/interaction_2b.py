@@ -11,7 +11,6 @@ from Crypto.Hash import SHA3_256
 modulus = 43156202150929343997204023690237148570191681940132577320374036808463240350882583048133407947064555839575112876002816227754056201929511529594423304196966617850624037811420032104728851930464693039613322475780195848729674846527655365879679078451495188227754101669668167688339861070729531263596514109718240053728887995295522349061627732545083926038985187692231898746079262120114964297005399587664178930260025038474302247096209888692518107068724001569615212092665409734376056960785115028373796416656188001131171958339297433047206918144535328608819092203454976824419428933920601592396035248631882572207311154100883811864507
 public_key = 65533
 
-
 # Function to parse the encrypted query from the output
 def parse_encrypted_query(output):
     # Use regular expressions to extract the encrypted query
@@ -28,7 +27,7 @@ def parse_encrypted_query(output):
 
 def create_query_to_decrypt(encryption_query):
     # Get the decryption query based on the encryption query
-    decryption_query = encryption_query * 2
+    decryption_query = encryption_query * pow(2, public_key, modulus) % modulus
     return decryption_query
 
 def parse_decrypted_query(output):
@@ -48,7 +47,7 @@ def parse_decrypted_query(output):
 
 def get_symm_key_from_decrypted_query(decrypted_query):
     # Get the message from the decrypted query
-    message = decrypted_query // 2
+    message = decrypted_query // 2 % modulus
     return message
 
 # we need to connect to the remote server (this requires us to be in
@@ -61,7 +60,7 @@ encryption_query = parse_encrypted_query(output)
 print(f"Encrypted query: {encryption_query}")
 
 query_to_decrypt = create_query_to_decrypt(encryption_query)
-print(f"Decryption query: {query_to_decrypt}")
+print(f"Query to decrypt: {query_to_decrypt}")
 
 # send the decryption query
 r.sendline(str(query_to_decrypt).encode())
@@ -72,7 +71,7 @@ decrypted_query = parse_decrypted_query(output)
 print(f"Decrypted query: {decrypted_query}")
 
 symm_key = get_symm_key_from_decrypted_query(decrypted_query)
-print(f"Message: {symm_key}")
+print(f"Guess: {symm_key}")
 
 r.sendline(str(symm_key).encode())
 
