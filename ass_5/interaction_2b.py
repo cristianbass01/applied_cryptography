@@ -1,9 +1,3 @@
-# this file shows you how to interact with a script running remotely
-# especially if you want to interact multiple times, this is much easier
-# than doing it by hand.
-
-# this package is required for everything, you can install it with
-# 'pip install pwntools'
 from pwn import *
 import re
 
@@ -55,44 +49,29 @@ r = remote('appliedcrypto.cs.ru.nl', 4143)
 
 # this allows us to read the bits we've received
 output = r.recv().decode()
+print(output)
 encryption_query = parse_encrypted_query(output)
-print(f"Encrypted query: {encryption_query}")
 
+# create the decryption query based on the encryption query
 query_to_decrypt = create_query_to_decrypt(encryption_query)
-print(f"Query to decrypt: {query_to_decrypt}")
+print(query_to_decrypt)
 
-# send the decryption query
+# send the decryption query to the server
 r.sendline(str(query_to_decrypt).encode())
 
-# get the decrypted query
+# get the decrypted query from the server
 output = r.recv().decode()
+print(output)
 decrypted_query = parse_decrypted_query(output)
-print(f"Decrypted query: {decrypted_query}")
 
+# retrieve the symmetric key
 symm_key = get_symm_key_from_decrypted_query(decrypted_query)
-print(f"Guess: {symm_key}")
+print(symm_key)
 
 r.sendline(str(symm_key).encode())
 
-# Capture any remaining data from the server after the loop
-try:
-    final_output = r.recvall().decode()
-    print(final_output)
-except EOFError:
-    print("No more data from server.")
+# Capture the final output
+final_output = r.recv().decode()
+print(final_output)
 
-# we can also send bits just as easy. For assignment 5, exercise 2
-# we want to send either '0' or '1'
-#r.sendline('0')
-
-# what did we get back?
-#output = str(r.recv())
-#result = output.rfind("The challenge was")
-#print(output[2:result])
-
-# in exercise 2 you need to apply a hash function, you can take it from
-# PyCryptodome
-#from Crypto.Hash import SHA3_256
-#hash_function = SHA3_256.new()
-#hash_function.update(b'Here we are hashing some bytestring')
-#print(hash_function.hexdigest())
+r.close()

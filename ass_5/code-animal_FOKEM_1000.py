@@ -134,6 +134,49 @@ def Decaps(c: int, sk: int, pk: tuple):
 
 ############ MAIN PROGRAM ################
 
+def one_try_only():
+    pk, sk = KGen(2048)
+    print(f"{pk = }")
+
+    name = None
+    while name is None: # Security check
+        name = input("What is your name : ")
+        if len(name) > 24:
+            print("Name too long. Retry.")
+            name = None
+
+    name = name_encoder(name)
+
+    c, k = Encaps(name, pk)
+
+    # SEND ENCRYPTED KEY
+    print("The encryption of the symmetric key is : ")
+    print(f"c_1 = {c[0]}")
+    print(f"c_2 = {c[1]}")
+
+    # DECRYPTION QUERY
+    print("You get ONE try! What do you want to decrypt:")
+    c_1 = int(input("c_1: "))
+    c_2 = int(input("c_2: "))
+    decryption_query = (c_1, c_2)
+
+    if decryption_query == c:
+        print("Your ciphertext must be different than my ciphertext!")
+    else:
+        decrypted = Decaps(decryption_query, sk, pk)
+        if decrypted is None:
+            print("Decryption failed.")
+        else:
+            print("Decrypted: ", decrypted)
+        
+        # GUESS THE KEY FROM THE DECRYPTED QUERY
+        flag_guess = int(input("What is Alice's key? One query: "))
+        
+        if k == flag_guess:
+            print("Win!")
+        else:
+            print("Go fish.")
+
 def save_encaps_cyphers(n = 1000):
     pk, sk = KGen(2048, load_private= True)
 
@@ -167,7 +210,49 @@ def test_encaps_cyphers():
             if k is None:
                 print(f'Error in decryption of cypher: {c}')
 
-save_encaps_cyphers(1000)
-test_encaps_cyphers()
+def multiple_tries():
+    pk, sk = KGen(2048)
+    print(f"{pk = }")
 
+    name = None
+    while name is None: # Security check
+        name = input("What is your name : ")
+        if len(name) > 24:
+            print("Name too long. Retry.")
+            name = None
 
+    name = name_encoder(name)
+
+    c, k = Encaps(name, pk)
+
+    # SEND ENCRYPTED KEY
+    print("The encryption of the symmetric key is : ")
+    print(f"c_1 = {c[0]}")
+    print(f"c_2 = {c[1]}")
+
+    # DECRYPTION QUERY
+    print("You get 1000 tries! What do you want to decrypt:")
+    
+    for _ in range(1000):
+        print(f"Try {_ + 1}")
+        c_1 = int(input("c_1: "))
+        c_2 = int(input("c_2: "))
+        decryption_query = (c_1, c_2)
+
+        if decryption_query == c:
+            print("Your ciphertext must be different than my ciphertext!")
+        else:
+            decrypted = Decaps(decryption_query, sk, pk)
+            if decrypted is None:
+                print("Decryption failed.")
+            else:
+                print("Decrypted: ", decrypted)
+            
+            # GUESS THE KEY FROM THE DECRYPTED QUERY
+            flag_guess = int(input("What is Alice's key? One query: "))
+            
+            if k == flag_guess:
+                print("Win!")
+            else:
+                print("Go fish.")
+    
