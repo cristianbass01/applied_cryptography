@@ -1,10 +1,13 @@
-import random
 import os
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from Crypto.Hash import SHA3_256
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
+
+import random
+import string
+from tqdm import tqdm
 
 ############ HELP FUNCTIONS ################
 
@@ -42,6 +45,19 @@ def split(value):
     R = int(str(value)[-max_hash_length:])
     return name, R
 
+def test_implementation(sk, pk, N, n=1000):
+    random_values = [int(''.join(random.choices(string.digits, k=77))) for _ in range(n)]
+
+    for X in tqdm(random_values):
+        c, k = Encapsulate(X, pk, N)
+        decrypted = Decapsulate(c, sk, N)
+        assert k == decrypted, f"{k = } != {decrypted = }"
+
+def generate_random_cyphertexts(min_value, max_value, n):
+    random_values = set()
+    while len(random_values) < n:
+        random_values.add(random.randint(min_value, max_value))
+    return list(random_values)
 
 ############ KGEN, ENC, DEC ################
 
@@ -84,7 +100,7 @@ def KGen(length = 2048, load_private=False):
 def encrypt(plaintext, public_key, modulus):
     return pow(plaintext, public_key, modulus)
 
-def decryption_oracle(ciphertext):
+def decryption_oracle(ciphertext, sk, N):
     return pow(ciphertext, sk, N)
 
 ############ KEM ################
@@ -94,9 +110,10 @@ def KDF(X):
     return PBKDF2(str(X), salt, dkLen=32)
 
 # Encapsulation function
-def Encapsulate(name, pk, N):
-    X = name_encoder(name)
+def Encapsulate(X, pk, N):
+
     R = get_hash(X)
+
     message = concatenate(X, R)
 
     c = encrypt(message, pk, N)
@@ -105,8 +122,8 @@ def Encapsulate(name, pk, N):
     return c, k
 
 # Decapsulation function
-def Decapsulate(c):
-    message = decryption_oracle(c)
+def Decapsulate(c, sk, N):
+    message = decryption_oracle(c, sk, N)
 
     try:
         X, R = split(message)
@@ -117,63 +134,3 @@ def Decapsulate(c):
         return KDF(X)
     else:
         return None
-
-############ MAIN ################
-attack = False
-
-pk, sk, N = KGen(load_private=True)
-print(f"{pk = }")
-print(f"{N = }")
-
-name = input("What is your name : ")
-
-c, k = Encapsulate(name, pk, N)
-
-# SEND ENCRYPTED KEY
-print("The encryption of the symmetric key is : ")
-print(c)
-
-def create_query_to_decrypt(encryption_query):
-    # Get the decryption query based on the encryption query
-    decryption_query = encryption_query * pow(2, pk, N) % N
-    return decryption_query
-
-def get_symm_key_from_decrypted_query(decrypted_query):
-    # Get the message from the decrypted query
-    message = decrypted_query // 2 % N
-
-    X, R = split(message)
-    return KDF(X)
-    
-# DECRYPTION QUERY
-if attack:
-    print("You get ONE try! What do you want to decrypt:")
-    decryption_query = create_query_to_decrypt(c)
-    print(decryption_query)
-else:
-    decryption_query = int(input("You get ONE try! What do you want to decrypt: "))
-
-
-if decryption_query == c:
-    print("Your ciphertext must be different than my ciphertext!")
-else:
-    decrypted = Decapsulate(decryption_query)
-    if decrypted is None:
-        print("Decryption failed.")
-    else:
-        print("Decrypted: ", decrypted)
-        
-
-    # GUESS THE KEY FROM THE DECRYPTED QUERY
-    #flag_guess = int(input("What is Alice's key? One query: "))
-    print("What is Alice's key? One query: ")
-    flag_guess = get_symm_key_from_decrypted_query(decrypted) if decrypted else None
-    
-    print(f"{flag_guess = }")
-    if k == flag_guess:
-        print("Win!")
-    else:
-        print("Go fish.")
-
-
-

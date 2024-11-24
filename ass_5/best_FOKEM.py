@@ -189,12 +189,6 @@ def save_encaps_cyphers(n = 1000):
             c, k = Encaps(random_value, pk)
             file.write(f"{c}\n")
 
-            k_prime = Decaps(c, sk, pk)
-
-            if k != k_prime:
-                print(f'Random value: {random_value}')
-                print(f'Error: {k} != {k_prime}')
-
 def test_encaps_cyphers():
     pk, sk = KGen(2048, load_private = True)
 
@@ -209,6 +203,23 @@ def test_encaps_cyphers():
 
             if k is None:
                 print(f'Error in decryption of cypher: {c}')
+            else:
+                print(f"Decrypted: {k}")
+
+def test_implementation(n = 1000):
+    pk, sk = KGen(2048)
+
+    random_values = [int(''.join(random.choices(string.digits, k=77))) for _ in range(n)]
+
+    for random_value in tqdm(random_values):
+        c, k = Encaps(random_value, pk)
+
+        k_prime = Decaps(c, sk, pk)
+
+        if k != k_prime:
+            print(f'Random value: {random_value}')
+            print(f'Error: {k} != {k_prime}')
+            break
 
 def multiple_tries():
     pk, sk = KGen(2048)
@@ -244,7 +255,8 @@ def multiple_tries():
         else:
             decrypted = Decaps(decryption_query, sk, pk)
             if decrypted is None:
-                print("Decryption failed.")
+                print("Decryption not valid due to query tampering.")
+                continue
             else:
                 print("Decrypted: ", decrypted)
             
@@ -253,6 +265,8 @@ def multiple_tries():
             
             if k == flag_guess:
                 print("Win!")
+                break
             else:
                 print("Go fish.")
-    
+
+test_implementation(1000)
