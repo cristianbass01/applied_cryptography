@@ -153,20 +153,19 @@ def save_encaps_cyphers(n = 1000):
                 print(f'Error: {k} != {k_prime}')
 
 def test_encaps_cyphers():
-    pk, sk = KGen(2048, load_private = False)
+    pk, sk = KGen(2048, load_private = True)
 
     file_name = "encaps_cyphers.txt"
 
     with open(file_name, "r") as file:
         lines = file.readlines()
-        total_lines = len(lines)
-
-        for line in tqdm(file, total=total_lines):
+        
+        for line in tqdm(lines):
             c = eval(line.strip())
             k = Decaps(c, sk, pk)
 
-            if k is not None:
-                print('Success')
+            if k is None:
+                print(f'Error in decryption of cypher: {c}')
 
 save_encaps_cyphers(1000)
 test_encaps_cyphers()
